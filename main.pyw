@@ -25,7 +25,7 @@ class MainWindow(QMainWindow):
 
         self.grid = QGridLayout(frame)
         self.setCentralWidget(frame)
-        self.setWindowTitle('SoundCloud PyPlayer')
+        self.setWindowTitle('CloudPlayer')
 
         self.list = QListWidget()
         self.list.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -136,16 +136,8 @@ class MainWindow(QMainWindow):
         self.controller.add_track(sc_get_track(49746879))
         self.controller.add_track(sc_get_track(22728013))
         self.controller.add_track(sc_get_track(73115505))
-        # self.player.add_track(22728013)
-        # self.player.add_track(73115505)
 
         self.volume.setValue(80)
-
-    # def volume_change(self, value):
-    #     self.player._player.setVolume(value)
-
-    # def track_position_changed(self, position):
-    #     self.track_position.setValue(position)
 
     def list_popup(self, point):
         self.popup_track_menu.exec(self.list.mapToGlobal(point))
@@ -153,7 +145,6 @@ class MainWindow(QMainWindow):
     def search_tracks(self):
         self.search_list.clear()
         tracks = sc_search_tracks(self.input.text())
-        # tracks = client.get('/tracks', q=self.input.text())
         global searched_tracks
         searched_tracks = tracks
         total_duration = 0
@@ -169,10 +160,8 @@ class MainWindow(QMainWindow):
         self.search_list.clear()
         position = self.list.currentRow()
         track = self.controller.playlists[self.controller.active_playlist].tracks[position]
-        # track = self.player.playlist[position]
 
         related_tracks = track.search_related()
-        # related_tracks = client.get('/tracks/%i/related' % track.id)
         global searched_tracks
         searched_tracks = related_tracks
         total_duration = 0
@@ -191,6 +180,13 @@ class MainWindow(QMainWindow):
     def add_all_tracks(self):
         for row in range(self.search_list.count()):
             self.controller.add_track(searched_tracks[row])
+
+    def set_title(self, title=""):
+        if title == '':
+            title = 'CloudPlayer'
+        else:
+            title += ' - CloudPlayer'
+        self.setWindowTitle(title)
 
 
 if __name__ == '__main__':
