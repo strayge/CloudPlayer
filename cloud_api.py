@@ -142,7 +142,7 @@ def sc_save_track(track_id=-1, track=None, path=''):
     if not track:
         assert track_id > 0
         track = sc_get_track(track_id)
-    url = '%s?client_id=%s' % (track.stream_url, soundcloud_client_id)
+    url = track.stream_url()
     r = requests.get(url)
     if r.status_code == 200:
         filename = path + track.title + '.' + track.original_format
@@ -150,6 +150,7 @@ def sc_save_track(track_id=-1, track=None, path=''):
         for data in r.iter_content():
             f.write(data)
         f.close()
+        print('Saved to "%s"' % filename)
         return True
 
 def sc_load_playlist(name):
@@ -168,7 +169,7 @@ def sc_load_playlist(name):
 
 def sc_save_playlist(name, playlist):
     query = []
-    for track in playlist:
+    for track in playlist.tracks:
         if track._service == 'soundcloud':
             query.append(dict(id=track.id))
     playlists = _client.get('/me/playlists')

@@ -3,13 +3,15 @@ from PyQt5.QtGui import *
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 from cloud_api import *
-
+from PyQt5.QtWidgets import *
 
 class Controller:
     def __init__(self, view):
         self.view = view
 
-        self.view.volume.valueChanged.connect(self._volume_changed)
+        self._searched_tracks = []
+
+        # self.view.volume.valueChanged.connect(self._volume_changed)
 
         self._player = QMediaPlayer()
         self._player.mediaStatusChanged.connect(self._player_status_changed)
@@ -21,10 +23,12 @@ class Controller:
 
         self.playlists = []
         # todo: load saved playlists here
-        self.playlists.append(Playlist())
+        # self.playlists.append(Playlist())
         self.active_playlist = 0
-        self.view.list.itemDoubleClicked.connect(self.change_track)
-        self.view.track_position.sliderReleased.connect(self.change_track_position)
+        # self.view.list.itemDoubleClicked.connect(self.change_track)
+        # self.view.track_position.sliderReleased.connect(self.change_track_position)
+
+        self.last_colored_item = None
 
     def _player_status_changed(self, status):
         print('_player_status_changed', status)
@@ -34,11 +38,14 @@ class Controller:
         if status in [QMediaPlayer.EndOfMedia, QMediaPlayer.NoMedia, QMediaPlayer.UnknownMediaStatus, QMediaPlayer.InvalidMedia]:
             self.view.set_title()
         else:
-            pos = self.playlists[self.active_playlist].active_track
-            if pos >= 0:
-                track = self.playlists[self.active_playlist].tracks[pos]
-                self.view.set_title(track.title)
-            self.update_list_position(pos)
+            try:
+                pos = self.playlists[self.active_playlist].active_track
+                if pos >= 0:
+                    track = self.playlists[self.active_playlist].tracks[pos]
+                    self.view.set_title(track.title)
+                self.update_list_position(pos)
+            except IndexError:
+                print('Index error in _player_status_changed')
 
     def _player_media_changed(self, media):
         print('_player_media_changed', media)
@@ -56,7 +63,7 @@ class Controller:
     def _player_position_changed(self, pos):
         self.view.track_position.setValue(pos)
 
-    def _volume_changed(self, value):
+    def volume_changed(self, value):
         self._player.setVolume(value)
 
     def update_status(self):
@@ -68,27 +75,34 @@ class Controller:
                               total_duration // 3600 % 24,
                               total_duration // 60 % 60, total_duration % 60))
 
-    def add_track(self, track):
-        self.playlists[self.active_playlist].add(track)
-        self.view.list.addItem(track.title)
-        self.update_status()
+    def add_track(self, track, playlist_index=None):
+        if not playlist_index:
+            playlist_index = self.view.tabs.currentIndex()
+        self.playlists[playlist_index].add(track)
+        self.view.tabs.currentWidget().addItem(track.title)
+        # self.update_status()
 
     def remove_track(self):
-        position = self.view.list.currentRow()
+        position = self.view.tabs.currentWidget().currentRow()
         if position != -1:
-            self.view.list.takeItem(position)
+            self.view.tabs.currentWidget().takeItem(position)
             self.playlists[self.active_playlist].remove(position)
             # del(self.playlists[self.active_playlist].tracks[position])
             # self.qplaylist.removeMedia(position)
             self.update_status()
 
     def remove_all_tracks(self):
-        self.playlists[self.active_playlist].clear()
-        self.view.list.clear()
+        playlist_index = self.view.tabs.currentIndex()
+        self.playlists[playlist_index].clear()
+        self.view.tabs.currentWidget().clear()
         self.update_status()
 
     def next(self):
         print('next')
+        # if we close last tab with current track, after it ended, we stop playing
+        # todo: need check, that if we close not last tab with current song, we also need stop after song ended
+        if self.active_playlist >= len(self.playlists):
+            return
         next_pos = self.playlists[self.active_playlist].active_track + 1
         if next_pos < self.playlists[self.active_playlist].count():
             self.playlists[self.active_playlist].active_track = next_pos
@@ -112,19 +126,24 @@ class Controller:
         self._player.pause()
 
     def update_list_position(self, position):
+        showed_list = self.view.tabs.currentWidget()
         # self.status.setText(str(position))
-        for i in range(self.view.list.count()):
-            self.view.list.item(i).setBackground(QBrush())
-        if (position >= 0) and (position <= self.view.list.count()):
-            self.view.list.item(position).setBackground(QBrush(QColor('red')))
+        if self.last_colored_item:
+            self.last_colored_item.setBackground(QBrush())
+        if (position >= 0) and (position <= showed_list.count()):
+            self.last_colored_item = showed_list.item(position)
+            self.last_colored_item.setBackground(QBrush(QColor('red')))
 
         # self.view.list.setCurrentRow(position)
 
         # self.view.track_position.setMaximum(self.playlists[self.active_playlist].tracks[position].duration)
 
-    def change_track(self, item):
+    def change_track(self):
         print('change_track')
-        position = self.view.list.currentRow()
+        playlist_index = self.view.tabs.currentIndex()
+        self.active_playlist = playlist_index
+
+        position = self.view.tabs.currentWidget().currentRow()
 
         self.playlists[self.active_playlist].active_track = position
         print(position)
@@ -137,17 +156,69 @@ class Controller:
         self._player.setPosition(self.view.track_position.value())
 
     def save_track(self):
-        position = self.view.list.currentRow()
-        track = self.playlist[position]
+        position = self.view.tabs.currentWidget().currentRow()
+        selected_playlist = self.view.tabs.currentIndex()
+        track = self.playlists[selected_playlist].tracks[position]
         track.save()
 
     def load_playlist(self):
-        name = 'pyplayer1'
-        loaded_playlist = sc_load_playlist(name)
+        # name = 'pyplayer1'
+        playlist_index = self.view.tabs.currentIndex()
+        playlist = self.playlists[playlist_index]
+        loaded_playlist = sc_load_playlist(playlist.name)
+
+        self.remove_all_tracks()
+        for track in loaded_playlist:
+            self.add_track(track)
         # todo: need load with update gui. check
-        self.playlists[self.active_playlist] = loaded_playlist
+        # self.playlists[playlist_index] = loaded_playlist
         self.update_status()
 
     def save_playlist(self):
-        name = 'pyplayer1'
-        sc_save_playlist(name, self.playlists[self.active_playlist])
+        # name = 'pyplayer1'
+        playlist_index = self.view.tabs.currentIndex()
+        playlist = self.playlists[playlist_index]
+        sc_save_playlist(playlist.name, playlist)
+
+    def add_playlist(self, name):
+        self.playlists.append(Playlist(name))
+
+    def remove_playlist(self, index):
+        del(self.playlists[index])
+
+    def search_tracks(self):
+        self.view.search_list.clear()
+        tracks = sc_search_tracks(self.view.input.text())
+        self._searched_tracks = tracks
+        total_duration = 0
+        for track in self._searched_tracks:
+            self.view.search_list.addItem(track.title)
+            total_duration += track.duration
+        self.view.search_status.setText("Founded %i tracks. Total duration %i:%02i:%02i:%02i" %
+                                   (len(self._searched_tracks),
+                                    total_duration // 86400000, total_duration // 3600000 % 24,
+                                    total_duration // 60000 % 60, total_duration // 1000 % 60))
+
+    def search_similar(self):
+        self.view.search_list.clear()
+        position = self.view.tabs.currentWidget().currentRow()
+        track = self.playlists[self.active_playlist].tracks[position]
+
+        related_tracks = track.search_related()
+        self._searched_tracks = related_tracks
+        total_duration = 0
+        for track in self._searched_tracks:
+            self.view.search_list.addItem(track.title)
+            total_duration += track.duration
+        self.view.search_status.setText("Founded %i tracks. Total duration %i:%02i:%02i:%02i" %
+                                   (len(self._searched_tracks),
+                                    total_duration // 86400000, total_duration // 3600000 % 24,
+                                    total_duration // 60000 % 60, total_duration // 1000 % 60))
+
+    def clicked_add_track(self):
+        position = self.view.search_list.currentRow()
+        self.add_track(self._searched_tracks[position])
+
+    def clicked_add_all_tracks(self):
+        for row in range(self.view.search_list.count()):
+            self.add_track(self._searched_tracks[row])

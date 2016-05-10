@@ -8,54 +8,83 @@ from cloud_api import *
 from controller import Controller
 from qt_styles import *
 
-searched_tracks = []
-
 
 class QMouseSlider(QSlider):
     def mousePressEvent(self, event):
-        self.setValue(QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()))
+        self.setValue( QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()) )
 
     def mouseMoveEvent(self, event):
-        self.setValue(QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()))
+        self.setValue( QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()) )
+
+
+class QTabWidgetWithAdd(QTabWidget):
+    def __init__(self):
+        QTabWidget.__init__(self)
+        self._action_add_tab = None
+        self._build_tabs()
+
+    def _build_tabs(self):
+        self.setUpdatesEnabled(True)
+        self.insertTab(0,QWidget(),'+')
+        self.currentChanged.connect(self._new_tab_clicked)
+
+    def _new_tab_clicked(self, index):
+        if index == self.count()-1:
+            if self._action_add_tab:
+                self._action_add_tab()
+            else:
+                self.insertTab(index, QWidget(), "___ %d" %(index+1))
+            self.setCurrentIndex(index)
+
+    def addTab(self, widget, *__args):
+        self.insertTab(self.count()-1, widget, *__args)
+        self.setCurrentIndex(self.count()-2)
+
+    def setAddTabAction(self, action):
+        self._action_add_tab = action
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         frame = QFrame(self)
 
+        self.controller = Controller(self)
+
         self.setCentralWidget(frame)
         self.setWindowTitle('CloudPlayer')
 
-        self.list = QListWidget()
-        self.list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        # self.list = QListWidget()
+        # self.list.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.playlist_status = QLabel()
 
         self.track_position = QSlider(Qt.Horizontal)
         self.track_position.setStyleSheet(qslider_stylesheet)
+        self.track_position.sliderReleased.connect(self.controller.change_track_position)
 
         self.volume = QMouseSlider(Qt.Horizontal)
         self.volume.setMinimum(0)
         self.volume.setMaximum(100)
+        self.volume.valueChanged.connect(self.controller.volume_changed)
 
-        self.popup_track_menu = QMenu()
+        # self.popup_track_menu = QMenu()
 
-        self.controller = Controller(self)
 
-        action_remove = QAction(QIcon(), 'Remove', self)
-        action_remove.triggered.connect(self.controller.remove_track)
-        self.popup_track_menu.addAction(action_remove)
 
-        action_similar = QAction(QIcon(), 'Find similar', self)
-        action_similar.triggered.connect(self.search_similar)
-        self.popup_track_menu.addAction(action_similar)
+        # action_remove = QAction(QIcon(), 'Remove', self)
+        # action_remove.triggered.connect(self.controller.remove_track)
+        # self.popup_track_menu.addAction(action_remove)
+        #
+        # action_similar = QAction(QIcon(), 'Find similar', self)
+        # action_similar.triggered.connect(self.search_similar)
+        # self.popup_track_menu.addAction(action_similar)
+        #
+        # action_save_track = QAction(QIcon(), 'Save', self)
+        # action_save_track.triggered.connect(self.controller.save_track)
+        # self.popup_track_menu.addAction(action_save_track)
 
-        action_save_track = QAction(QIcon(), 'Save', self)
-        action_save_track.triggered.connect(self.controller.save_track)
-        self.popup_track_menu.addAction(action_save_track)
-
-        self.list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.list.customContextMenuRequested.connect(self.list_popup)
+        # self.list.setContextMenuPolicy(Qt.CustomContextMenu)
+        # self.list.customContextMenuRequested.connect(self.list_popup)
 
         self.btn_play = QPushButton()
         self.btn_play.setText("Play")
@@ -74,11 +103,11 @@ class MainWindow(QMainWindow):
         self.btn_next.clicked.connect(self.controller.next)
 
         self.input = QLineEdit()
-        self.input.returnPressed.connect(self.search_tracks)
+        self.input.returnPressed.connect(self.controller.search_tracks)
 
         self.btn_search_tracks = QPushButton()
         self.btn_search_tracks.setText("Search")
-        self.btn_search_tracks.clicked.connect(self.search_tracks)
+        self.btn_search_tracks.clicked.connect(self.controller.search_tracks)
 
         self.search_list = QListWidget()
 
@@ -86,11 +115,11 @@ class MainWindow(QMainWindow):
 
         self.btn_add_track = QPushButton()
         self.btn_add_track.setText("Add")
-        self.btn_add_track.clicked.connect(self.add_track)
+        self.btn_add_track.clicked.connect(self.controller.clicked_add_track)
 
         self.btn_add_all_track = QPushButton()
         self.btn_add_all_track.setText("Add All")
-        self.btn_add_all_track.clicked.connect(self.add_all_tracks)
+        self.btn_add_all_track.clicked.connect(self.controller.clicked_add_all_tracks)
 
         self.btn_remove_all_tracks = QPushButton()
         self.btn_remove_all_tracks.setText("Clear")
@@ -104,10 +133,12 @@ class MainWindow(QMainWindow):
         self.btn_save_playlist.setText("Save")
         self.btn_save_playlist.clicked.connect(self.controller.save_playlist)
 
-        self.tabs = QTabWidget()
-        self.tab1 = QListWidget()
-        self.tabs.addTab(self.list, "tab1")
-        # self.tabs.addTab(self.tab1, "")
+        self.tabs = QTabWidgetWithAdd()
+        self.tabs.setAddTabAction(self.tab_add)
+        self.tabs.tabBarDoubleClicked.connect(self.tab_close)
+        self.tab_add()
+        # self.tab1 = QListWidget()
+        # self.tabs.addTab(self.list, "tab 1")
 
         self.layout_left_topbuttons = QHBoxLayout()
         self.layout_left_topbuttons.addWidget(self.btn_play)
@@ -152,47 +183,35 @@ class MainWindow(QMainWindow):
 
         self.volume.setValue(80)
 
+    def tab_add(self):
+        new_list = QListWidget()
+        new_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        new_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        new_list.customContextMenuRequested.connect(self.list_popup)
+
+        new_list.itemDoubleClicked.connect(self.controller.change_track)
+
+        name = "tab %d" % self.tabs.count()
+        self.tabs.addTab(new_list, name)
+        self.controller.add_playlist(name)
+        # self.tabs.insertTab(self.tabs.count()-1, new_list, "tab %d" % self.tabs.count())
+        # self.setCurrentIndex(pos-1)
+        # new_list.addItem("test")
+
+    def tab_close(self, index):
+        # change current index to previous (if last) to prevent open new tab
+        if self.tabs.currentIndex() == self.tabs.count()-2:
+            self.tabs.setCurrentIndex(self.tabs.count()-3)
+        self.tabs.removeTab(index)
+        self.controller.remove_playlist(index)
+
     def list_popup(self, point):
-        self.popup_track_menu.exec(self.list.mapToGlobal(point))
-
-    def search_tracks(self):
-        self.search_list.clear()
-        tracks = sc_search_tracks(self.input.text())
-        global searched_tracks
-        searched_tracks = tracks
-        total_duration = 0
-        for track in searched_tracks:
-            self.search_list.addItem(track.title)
-            total_duration += track.duration
-        self.search_status.setText("Founded %i tracks. Total duration %i:%02i:%02i:%02i" %
-                                   (len(searched_tracks),
-                                    total_duration // 86400000, total_duration // 3600000 % 24,
-                                    total_duration // 60000 % 60, total_duration // 1000 % 60))
-
-    def search_similar(self):
-        self.search_list.clear()
-        position = self.list.currentRow()
-        track = self.controller.playlists[self.controller.active_playlist].tracks[position]
-
-        related_tracks = track.search_related()
-        global searched_tracks
-        searched_tracks = related_tracks
-        total_duration = 0
-        for track in searched_tracks:
-            self.search_list.addItem(track.title)
-            total_duration += track.duration
-        self.search_status.setText("Founded %i tracks. Total duration %i:%02i:%02i:%02i" %
-                                   (len(searched_tracks),
-                                    total_duration // 86400000, total_duration // 3600000 % 24,
-                                    total_duration // 60000 % 60, total_duration // 1000 % 60))
-
-    def add_track(self):
-        position = self.search_list.currentRow()
-        self.controller.add_track(searched_tracks[position])
-
-    def add_all_tracks(self):
-        for row in range(self.search_list.count()):
-            self.controller.add_track(searched_tracks[row])
+        popup = QMenu()
+        popup.addAction("Remove", self.controller.remove_track)
+        popup.addAction("Find similar", self.controller.search_similar)
+        popup.addAction("Save", self.controller.save_track)
+        current_list = self.tabs.currentWidget()
+        popup.exec(current_list.mapToGlobal(point))
 
     def set_title(self, title=""):
         if title == '':
