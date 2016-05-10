@@ -5,22 +5,43 @@ import requests
 import os
 import json
 
+# for pickle
+from soundcloud.resource import Resource
+
+def soundcloud_resource_getattr(self, name):
+    if name == 'obj':
+        return object.__getattr__(self, name)
+    if name in self.obj:
+        return self.obj.get(name)
+    raise AttributeError
+def soundcloud_resource_getstate(self):
+    return dict(self.obj.items())
+def soundcloud_resource_setstate(self, items):
+    if not hasattr(self, 'obj'):
+        self.obj = {}
+    for key in items.keys():
+        self.obj[key] = items[key]
+Resource.__getstate__ = soundcloud_resource_getstate
+Resource.__setstate__ = soundcloud_resource_setstate
+Resource.__getattr__ = soundcloud_resource_getattr
+
+
 SETTINGS_FILENAME = 'settings.json'
 if not os.path.isfile(SETTINGS_FILENAME):
-    f = open(SETTINGS_FILENAME, 'w')
-    f.write("""{"soundcloud": {"access_token": "TOKEN",
+    settings_file = open(SETTINGS_FILENAME, 'w')
+    settings_file.write("""{"soundcloud": {"access_token": "TOKEN",
                                "client_id": "ID",
                                "client_secret": "SECRET"},
                 "pleer": {"app_id": "ID",
                           "app_key": "KEY"}
                }""")
-    f.close()
+    settings_file.close()
     print('You need set your keys in %s' % SETTINGS_FILENAME)
     exit()
 
-f = open(SETTINGS_FILENAME, 'r')
-settings = json.load(f)
-f.close()
+settings_file = open(SETTINGS_FILENAME, 'r')
+settings = json.load(settings_file)
+settings_file.close()
 
 soundcloud_access_token = settings['soundcloud']['access_token']
 soundcloud_client_id = settings['soundcloud']['client_id']

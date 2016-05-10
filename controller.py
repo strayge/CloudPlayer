@@ -3,16 +3,11 @@ from PyQt5.QtGui import *
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 from cloud_api import *
-from PyQt5.QtWidgets import *
+
 
 class Controller:
     def __init__(self, view):
         self.view = view
-
-        self._searched_tracks = []
-
-        # self.view.volume.valueChanged.connect(self._volume_changed)
-
         self._player = QMediaPlayer()
         self._player.mediaStatusChanged.connect(self._player_status_changed)
         self._player.mediaChanged.connect(self._player_media_changed)
@@ -20,14 +15,9 @@ class Controller:
         self._player.stateChanged.connect(self._player_state_changed)
         self._player.positionChanged.connect(self._player_position_changed)
         self._player.durationChanged.connect(self._player_duration_changed)
-
+        self._searched_tracks = []
         self.playlists = []
-        # todo: load saved playlists here
-        # self.playlists.append(Playlist())
         self.active_playlist = 0
-        # self.view.list.itemDoubleClicked.connect(self.change_track)
-        # self.view.track_position.sliderReleased.connect(self.change_track_position)
-
         self.last_colored_item = None
 
     def _player_status_changed(self, status):
@@ -35,7 +25,8 @@ class Controller:
         if status in [QMediaPlayer.EndOfMedia, QMediaPlayer.InvalidMedia]:
             self.next()
 
-        if status in [QMediaPlayer.EndOfMedia, QMediaPlayer.NoMedia, QMediaPlayer.UnknownMediaStatus, QMediaPlayer.InvalidMedia]:
+        if status in [QMediaPlayer.EndOfMedia, QMediaPlayer.NoMedia, QMediaPlayer.UnknownMediaStatus,
+                      QMediaPlayer.InvalidMedia]:
             self.view.set_title()
         else:
             try:
@@ -71,24 +62,21 @@ class Controller:
         for track in self.playlists[self.active_playlist].tracks:
             total_duration += track.duration
         self.view.playlist_status.setText("%i tracks. Total duration %i:%02i:%02i:%02i" %
-                             (self.playlists[self.active_playlist].count(), total_duration // 86400,
-                              total_duration // 3600 % 24,
-                              total_duration // 60 % 60, total_duration % 60))
+                                          (self.playlists[self.active_playlist].count(), total_duration // 86400,
+                                           total_duration // 3600 % 24,
+                                           total_duration // 60 % 60, total_duration % 60))
 
     def add_track(self, track, playlist_index=None):
         if not playlist_index:
             playlist_index = self.view.tabs.currentIndex()
         self.playlists[playlist_index].add(track)
         self.view.tabs.currentWidget().addItem(track.title)
-        # self.update_status()
 
     def remove_track(self):
         position = self.view.tabs.currentWidget().currentRow()
         if position != -1:
             self.view.tabs.currentWidget().takeItem(position)
             self.playlists[self.active_playlist].remove(position)
-            # del(self.playlists[self.active_playlist].tracks[position])
-            # self.qplaylist.removeMedia(position)
             self.update_status()
 
     def remove_all_tracks(self):
@@ -127,16 +115,11 @@ class Controller:
 
     def update_list_position(self, position):
         showed_list = self.view.tabs.currentWidget()
-        # self.status.setText(str(position))
         if self.last_colored_item:
             self.last_colored_item.setBackground(QBrush())
         if (position >= 0) and (position <= showed_list.count()):
             self.last_colored_item = showed_list.item(position)
             self.last_colored_item.setBackground(QBrush(QColor('red')))
-
-        # self.view.list.setCurrentRow(position)
-
-        # self.view.track_position.setMaximum(self.playlists[self.active_playlist].tracks[position].duration)
 
     def change_track(self):
         print('change_track')
@@ -162,20 +145,15 @@ class Controller:
         track.save()
 
     def load_playlist(self):
-        # name = 'pyplayer1'
         playlist_index = self.view.tabs.currentIndex()
         playlist = self.playlists[playlist_index]
         loaded_playlist = sc_load_playlist(playlist.name)
-
         self.remove_all_tracks()
         for track in loaded_playlist:
             self.add_track(track)
-        # todo: need load with update gui. check
-        # self.playlists[playlist_index] = loaded_playlist
         self.update_status()
 
     def save_playlist(self):
-        # name = 'pyplayer1'
         playlist_index = self.view.tabs.currentIndex()
         playlist = self.playlists[playlist_index]
         sc_save_playlist(playlist.name, playlist)
@@ -184,7 +162,7 @@ class Controller:
         self.playlists.append(Playlist(name))
 
     def remove_playlist(self, index):
-        del(self.playlists[index])
+        del (self.playlists[index])
 
     def search_tracks(self):
         self.view.search_list.clear()
@@ -195,9 +173,9 @@ class Controller:
             self.view.search_list.addItem(track.title)
             total_duration += track.duration
         self.view.search_status.setText("Founded %i tracks. Total duration %i:%02i:%02i:%02i" %
-                                   (len(self._searched_tracks),
-                                    total_duration // 86400000, total_duration // 3600000 % 24,
-                                    total_duration // 60000 % 60, total_duration // 1000 % 60))
+                                        (len(self._searched_tracks),
+                                         total_duration // 86400000, total_duration // 3600000 % 24,
+                                         total_duration // 60000 % 60, total_duration // 1000 % 60))
 
     def search_similar(self):
         self.view.search_list.clear()
@@ -211,9 +189,9 @@ class Controller:
             self.view.search_list.addItem(track.title)
             total_duration += track.duration
         self.view.search_status.setText("Founded %i tracks. Total duration %i:%02i:%02i:%02i" %
-                                   (len(self._searched_tracks),
-                                    total_duration // 86400000, total_duration // 3600000 % 24,
-                                    total_duration // 60000 % 60, total_duration // 1000 % 60))
+                                        (len(self._searched_tracks),
+                                         total_duration // 86400000, total_duration // 3600000 % 24,
+                                         total_duration // 60000 % 60, total_duration // 1000 % 60))
 
     def clicked_add_track(self):
         position = self.view.search_list.currentRow()
@@ -222,3 +200,29 @@ class Controller:
     def clicked_add_all_tracks(self):
         for row in range(self.view.search_list.count()):
             self.add_track(self._searched_tracks[row])
+
+    def load_current_state(self):
+        if not os.path.isfile('state.pickle'):
+            return
+        f = open('state.pickle', 'rb')
+        state = pickle.load(f)
+        f.close()
+        loaded_playlists = state['playlists']
+        for i in range(len(loaded_playlists) - len(self.playlists)):
+            self.view.tab_add()
+        self.view.tabs.setCurrentIndex(state['current_playlist'])
+        index = 0
+        del (self.playlists[0])
+        for playlist in loaded_playlists:
+            self.add_playlist(playlist.name)
+            for track in playlist.tracks:
+                self.add_track(track, playlist_index=index)
+            index += 1
+
+    def save_current_state(self):
+        state = dict()
+        state['playlists'] = self.playlists
+        state['current_playlist'] = self.view.tabs.currentIndex()
+        f = open('state.pickle', 'wb')
+        pickle.dump(state, f)
+        f.close()

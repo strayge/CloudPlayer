@@ -1,20 +1,18 @@
 import sys
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-from cloud_api import *
 from controller import Controller
 from qt_styles import *
 
 
 class QMouseSlider(QSlider):
     def mousePressEvent(self, event):
-        self.setValue( QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()) )
+        self.setValue(QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()))
 
     def mouseMoveEvent(self, event):
-        self.setValue( QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()) )
+        self.setValue(QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width()))
 
 
 class QTabWidgetWithAdd(QTabWidget):
@@ -25,23 +23,24 @@ class QTabWidgetWithAdd(QTabWidget):
 
     def _build_tabs(self):
         self.setUpdatesEnabled(True)
-        self.insertTab(0,QWidget(),'+')
+        self.insertTab(0, QWidget(), '+')
         self.currentChanged.connect(self._new_tab_clicked)
 
     def _new_tab_clicked(self, index):
-        if index == self.count()-1:
+        if index == self.count() - 1:
             if self._action_add_tab:
                 self._action_add_tab()
             else:
-                self.insertTab(index, QWidget(), "___ %d" %(index+1))
+                self.insertTab(index, QWidget(), "___ %d" % (index + 1))
             self.setCurrentIndex(index)
 
     def addTab(self, widget, *__args):
-        self.insertTab(self.count()-1, widget, *__args)
-        self.setCurrentIndex(self.count()-2)
+        self.insertTab(self.count() - 1, widget, *__args)
+        self.setCurrentIndex(self.count() - 2)
 
     def setAddTabAction(self, action):
         self._action_add_tab = action
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -53,9 +52,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(frame)
         self.setWindowTitle('CloudPlayer')
 
-        # self.list = QListWidget()
-        # self.list.setSelectionMode(QAbstractItemView.ExtendedSelection)
-
         self.playlist_status = QLabel()
 
         self.track_position = QSlider(Qt.Horizontal)
@@ -66,25 +62,6 @@ class MainWindow(QMainWindow):
         self.volume.setMinimum(0)
         self.volume.setMaximum(100)
         self.volume.valueChanged.connect(self.controller.volume_changed)
-
-        # self.popup_track_menu = QMenu()
-
-
-
-        # action_remove = QAction(QIcon(), 'Remove', self)
-        # action_remove.triggered.connect(self.controller.remove_track)
-        # self.popup_track_menu.addAction(action_remove)
-        #
-        # action_similar = QAction(QIcon(), 'Find similar', self)
-        # action_similar.triggered.connect(self.search_similar)
-        # self.popup_track_menu.addAction(action_similar)
-        #
-        # action_save_track = QAction(QIcon(), 'Save', self)
-        # action_save_track.triggered.connect(self.controller.save_track)
-        # self.popup_track_menu.addAction(action_save_track)
-
-        # self.list.setContextMenuPolicy(Qt.CustomContextMenu)
-        # self.list.customContextMenuRequested.connect(self.list_popup)
 
         self.btn_play = QPushButton()
         self.btn_play.setText("Play")
@@ -137,8 +114,6 @@ class MainWindow(QMainWindow):
         self.tabs.setAddTabAction(self.tab_add)
         self.tabs.tabBarDoubleClicked.connect(self.tab_close)
         self.tab_add()
-        # self.tab1 = QListWidget()
-        # self.tabs.addTab(self.list, "tab 1")
 
         self.layout_left_topbuttons = QHBoxLayout()
         self.layout_left_topbuttons.addWidget(self.btn_play)
@@ -177,31 +152,27 @@ class MainWindow(QMainWindow):
         self.layout_main.addLayout(self.layout_left)
         self.layout_main.addLayout(self.layout_right)
 
-        self.controller.add_track(sc_get_track(49746879))
-        self.controller.add_track(sc_get_track(22728013))
-        self.controller.add_track(sc_get_track(73115505))
+        # self.controller.add_track(sc_get_track(49746879))
+        # self.controller.add_track(sc_get_track(22728013))
+        # self.controller.add_track(sc_get_track(73115505))
 
         self.volume.setValue(80)
+        self.controller.load_current_state()
 
     def tab_add(self):
         new_list = QListWidget()
         new_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
         new_list.setContextMenuPolicy(Qt.CustomContextMenu)
         new_list.customContextMenuRequested.connect(self.list_popup)
-
         new_list.itemDoubleClicked.connect(self.controller.change_track)
-
         name = "tab %d" % self.tabs.count()
         self.tabs.addTab(new_list, name)
         self.controller.add_playlist(name)
-        # self.tabs.insertTab(self.tabs.count()-1, new_list, "tab %d" % self.tabs.count())
-        # self.setCurrentIndex(pos-1)
-        # new_list.addItem("test")
 
     def tab_close(self, index):
-        # change current index to previous (if last) to prevent open new tab
-        if self.tabs.currentIndex() == self.tabs.count()-2:
-            self.tabs.setCurrentIndex(self.tabs.count()-3)
+        # change current index to previous (if last) to prevent open "+" tab
+        if self.tabs.currentIndex() == self.tabs.count() - 2:
+            self.tabs.setCurrentIndex(self.tabs.count() - 3)
         self.tabs.removeTab(index)
         self.controller.remove_playlist(index)
 
@@ -219,6 +190,9 @@ class MainWindow(QMainWindow):
         else:
             title += ' - CloudPlayer'
         self.setWindowTitle(title)
+
+    def closeEvent(self, event):
+        self.controller.save_current_state()
 
 
 if __name__ == '__main__':
