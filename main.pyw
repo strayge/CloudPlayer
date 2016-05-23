@@ -110,6 +110,14 @@ class MainWindow(QMainWindow):
         self.btn_save_playlist.setText("Save")
         self.btn_save_playlist.clicked.connect(self.controller.save_playlist)
 
+        self.btn_remove_dups = QPushButton()
+        self.btn_remove_dups.setText("Remove dups")
+        self.btn_remove_dups.clicked.connect(self.controller.remove_dublicates)
+
+        self.btn_download_playlist = QPushButton()
+        self.btn_download_playlist.setText("Download all")
+        self.btn_download_playlist.clicked.connect(self.controller.download_playlist)
+
         self.tabs = QTabWidgetWithAdd()
         self.tabs.setAddTabAction(self.tab_add)
         self.tabs.tabBarDoubleClicked.connect(self.tab_close)
@@ -142,6 +150,8 @@ class MainWindow(QMainWindow):
         self.layout_right_bottombuttons.addWidget(self.btn_remove_all_tracks)
         self.layout_right_bottombuttons.addWidget(self.btn_load_playlist)
         self.layout_right_bottombuttons.addWidget(self.btn_save_playlist)
+        self.layout_right_bottombuttons.addWidget(self.btn_remove_dups)
+        self.layout_right_bottombuttons.addWidget(self.btn_download_playlist)
 
         self.layout_right = QVBoxLayout()
         self.layout_right.addWidget(self.tabs)

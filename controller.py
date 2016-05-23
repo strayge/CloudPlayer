@@ -72,11 +72,16 @@ class Controller:
         self.playlists[playlist_index].add(track)
         self.view.tabs.currentWidget().addItem(track.title)
 
-    def remove_track(self):
-        position = self.view.tabs.currentWidget().currentRow()
-        if position != -1:
-            self.view.tabs.currentWidget().takeItem(position)
-            self.playlists[self.active_playlist].remove(position)
+    def remove_track(self, track_pos=None):
+        if not track_pos:
+            track_pos = self.view.tabs.currentWidget().currentRow()
+        if track_pos != -1:
+            self.view.tabs.currentWidget().takeItem(track_pos)
+            print('track_pos: %i' % track_pos)
+            print('active_playlist: %i' % self.active_playlist)
+            print('active_playlist_count: %i' % self.playlists[self.active_playlist].count())
+            print('active_playlist_len: %i' % len(self.playlists[self.active_playlist].tracks))
+            self.playlists[self.active_playlist].remove(track_pos)
             self.update_status()
 
     def remove_all_tracks(self):
@@ -138,11 +143,37 @@ class Controller:
     def change_track_position(self):
         self._player.setPosition(self.view.track_position.value())
 
-    def save_track(self):
-        position = self.view.tabs.currentWidget().currentRow()
+    def remove_dublicates(self):
         selected_playlist = self.view.tabs.currentIndex()
-        track = self.playlists[selected_playlist].tracks[position]
+        playlist = self.playlists[selected_playlist]
+        processed_ids = []
+        counter = 0
+        print(len(playlist.tracks))
+        for track in playlist.tracks:
+            if track.id in processed_ids:
+                print(playlist.tracks.index(track))
+                self.remove_track(track_pos=playlist.tracks.index(track))
+                counter += 1
+            else:
+                processed_ids.append(track.id)
+        print('Removed %i tracks.' % counter)
+
+    def save_track(self, playlist_pos=None, track_pos=None):
+        if not track_pos:
+            track_pos = self.view.tabs.currentWidget().currentRow()
+        if not playlist_pos:
+            playlist_pos = self.view.tabs.currentIndex()
+        playlist = self.playlists[playlist_pos]
+        track = playlist.tracks[track_pos]
         track.save()
+
+    def download_playlist(self):
+        selected_playlist = self.view.tabs.currentIndex()
+        playlist = self.playlists[selected_playlist]
+        for track_pos in range(playlist.count()):
+            print('Saving %i/%s track...' % (track_pos+1, playlist.count()))
+            self.save_track(playlist_pos=selected_playlist, track_pos=track_pos)
+        print('Saving done.')
 
     def load_playlist(self):
         playlist_index = self.view.tabs.currentIndex()
@@ -218,6 +249,7 @@ class Controller:
             for track in playlist.tracks:
                 self.add_track(track, playlist_index=index)
             index += 1
+        # todo: add save/load volume state
 
     def save_current_state(self):
         state = dict()
