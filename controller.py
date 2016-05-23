@@ -180,6 +180,9 @@ class Controller:
         playlist_index = self.view.tabs.currentIndex()
         playlist = self.playlists[playlist_index]
         loaded_playlist = sc_load_playlist(playlist.name)
+        if not loaded_playlist:
+            self.log.error('Playlist not exists.')
+            return
         self.remove_all_tracks()
         for track in loaded_playlist:
             self.add_track(track)
