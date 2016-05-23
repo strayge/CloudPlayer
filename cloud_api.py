@@ -4,9 +4,11 @@ import pickle
 import requests
 import os
 import json
+import random
 
 # for pickle
 from soundcloud.resource import Resource
+
 
 def soundcloud_resource_getattr(self, name):
     if name == 'obj':
@@ -54,6 +56,8 @@ _client = soundcloud.Client(client_id=soundcloud_client_id,
                                  client_secret=soundcloud_client_secret,
                                  access_token=soundcloud_access_token)
 
+_seed_for_shuffle = random.random()
+
 
 class Playlist:
     def __init__(self, name='Untitled'):
@@ -89,6 +93,40 @@ class Playlist:
     def save_tracks(self, path):
         for track in self.tracks:
             track.save(path)
+
+    def get_next_track(self, index=None, shuffle=False):
+        if index is None:
+            index = self.active_track
+        if not shuffle:
+            next_index = index + 1
+            if next_index >= self.count():
+                return
+            else:
+                return next_index
+        else:
+            r = random.Random()
+            r.seed(_seed_for_shuffle)
+            shuffled_index = list(range(0, self.count()))
+            r.shuffle(shuffled_index)
+            next_index = shuffled_index[(shuffled_index.index(index)+1) % self.count()]
+            return next_index
+
+    def get_prev_track(self, index=None, shuffle=False):
+        if index is None:
+            index = self.active_track
+        if not shuffle:
+            next_index = index - 1
+            if next_index < 0:
+                return
+            else:
+                return next_index
+        else:
+            r = random.Random()
+            r.seed(_seed_for_shuffle)
+            shuffled_index = list(range(0,self.count()))
+            r.shuffle(shuffled_index)
+            next_index = shuffled_index[(shuffled_index.index(index)-1) % self.count()]
+            return next_index
 
 
 class Track:
@@ -167,6 +205,13 @@ def sc_save_track(track_id=-1, track=None, path=''):
     r = requests.get(url)
     if r.status_code == 200:
         filename = path + track.title + '.' + track.original_format
+        if os.path.exists(filename):
+            for i in range(100):
+                if i == 99:
+                    return
+                filename = "%s%s (%i).%s" % (path, track.title, i+2, track.original_format)
+                if not os.path.exists(filename):
+                    break
         f = open(filename, 'wb')
         for data in r.iter_content():
             f.write(data)

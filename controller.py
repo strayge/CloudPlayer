@@ -95,8 +95,8 @@ class Controller:
         # todo: need check, that if we close not last tab with current song, we also need stop after song ended
         if self.playing_playlist >= len(self.playlists):
             return
-        next_pos = self.playlists[self.playing_playlist].active_track + 1
-        if next_pos < self.playlists[self.playing_playlist].count():
+        next_pos = self.playlists[self.playing_playlist].get_next_track(shuffle=bool(self.view.shuffle.checkState()))
+        if next_pos is not None:
             self.playlists[self.playing_playlist].active_track = next_pos
             url = self.playlists[self.playing_playlist].tracks[next_pos].stream_url()
             self._player.setMedia(QMediaContent(QUrl(url)))
@@ -104,8 +104,8 @@ class Controller:
 
     def previous(self):
         self.log.debug('previous')
-        prev_pos = self.playlists[self.playing_playlist].active_track - 1
-        if prev_pos >= 0:
+        prev_pos = self.playlists[self.playing_playlist].get_prev_track(shuffle=bool(self.view.shuffle.checkState()))
+        if prev_pos is not None:
             self.playlists[self.playing_playlist].active_track = prev_pos
             url = self.playlists[self.playing_playlist].tracks[prev_pos].stream_url()
             self._player.setMedia(QMediaContent(QUrl(url)))
@@ -263,6 +263,7 @@ class Controller:
         self.view.tabs.setCurrentIndex(state['current_playlist'])
         self.log.debug('volume: %i' % state['volume'])
         self.view.volume.setValue(state['volume'])
+        self.view.shuffle.setCheckState(state['shuffle'])
 
     def save_current_state(self):
         state = dict()
@@ -270,6 +271,7 @@ class Controller:
         state['playlists'] = self.playlists
         state['current_playlist'] = self.view.tabs.currentIndex()
         state['volume'] = self.view.volume.value()
+        state['shuffle'] = self.view.shuffle.checkState()
         f = open('state.pickle', 'wb')
         pickle.dump(state, f)
         f.close()

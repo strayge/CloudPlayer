@@ -66,6 +66,8 @@ class MainWindow(QMainWindow):
         self.volume.setMaximum(100)
         self.volume.valueChanged.connect(self.controller.volume_changed)
 
+        self.shuffle = QCheckBox("Shuffle")
+
         self.btn_play = QPushButton()
         self.btn_play.setText("Play")
         self.btn_play.clicked.connect(self.controller.play)
@@ -132,6 +134,10 @@ class MainWindow(QMainWindow):
         self.layout_left_topbuttons.addWidget(self.btn_prev)
         self.layout_left_topbuttons.addWidget(self.btn_next)
 
+        self.layout_left_topcontrols = QHBoxLayout()
+        self.layout_left_topcontrols.addWidget(self.volume)
+        self.layout_left_topcontrols.addWidget(self.shuffle)
+
         self.layout_left_bottombuttons = QHBoxLayout()
         self.layout_left_bottombuttons.addWidget(self.btn_add_track)
         self.layout_left_bottombuttons.addWidget(self.btn_add_all_track)
@@ -143,7 +149,7 @@ class MainWindow(QMainWindow):
         self.layout_left = QVBoxLayout()
         self.layout_left.addLayout(self.layout_left_topbuttons)
         self.layout_left.addWidget(self.track_position)
-        self.layout_left.addWidget(self.volume)
+        self.layout_left.addLayout(self.layout_left_topcontrols)
         self.layout_left.addLayout(self.layout_search_input)
         self.layout_left.addWidget(self.search_list)
         self.layout_left.addWidget(self.search_status)
@@ -164,10 +170,6 @@ class MainWindow(QMainWindow):
         self.layout_main = QHBoxLayout(frame)
         self.layout_main.addLayout(self.layout_left)
         self.layout_main.addLayout(self.layout_right)
-
-        # self.controller.add_track(sc_get_track(49746879))
-        # self.controller.add_track(sc_get_track(22728013))
-        # self.controller.add_track(sc_get_track(73115505))
 
         self.volume.setValue(80)
         self.controller.load_current_state()
