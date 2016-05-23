@@ -18,7 +18,7 @@ class Controller:
         self._player.durationChanged.connect(self._player_duration_changed)
         self._searched_tracks = []
         self.playlists = []
-        self.active_playlist = 0
+        self.playing_playlist = 0
         self.last_colored_item = None
 
     def _player_status_changed(self, status):
@@ -31,9 +31,9 @@ class Controller:
             self.view.set_title()
         else:
             try:
-                pos = self.playlists[self.active_playlist].active_track
+                pos = self.playlists[self.playing_playlist].active_track
                 if pos >= 0:
-                    track = self.playlists[self.active_playlist].tracks[pos]
+                    track = self.playlists[self.playing_playlist].tracks[pos]
                     self.view.set_title(track.title)
                 self.update_list_position(pos)
             except IndexError:
@@ -60,10 +60,11 @@ class Controller:
 
     def update_status(self):
         total_duration = 0
-        for track in self.playlists[self.active_playlist].tracks:
+        playlist_index = self.view.tabs.currentIndex()
+        for track in self.playlists[playlist_index].tracks:
             total_duration += track.duration
         self.view.playlist_status.setText("%i tracks. Total duration %i:%02i:%02i:%02i" %
-                                          (self.playlists[self.active_playlist].count(), total_duration // 86400,
+                                          (self.playlists[playlist_index].count(), total_duration // 86400,
                                            total_duration // 3600 % 24,
                                            total_duration // 60 % 60, total_duration % 60))
 
@@ -78,7 +79,8 @@ class Controller:
             track_pos = self.view.tabs.currentWidget().currentRow()
         if track_pos != -1:
             self.view.tabs.currentWidget().takeItem(track_pos)
-            self.playlists[self.active_playlist].remove(track_pos)
+            playlist_index = self.view.tabs.currentIndex()
+            self.playlists[playlist_index].remove(track_pos)
             self.update_status()
 
     def remove_all_tracks(self):
@@ -91,21 +93,21 @@ class Controller:
         self.log.debug('next')
         # if we close last tab with current track, after it ended, we stop playing
         # todo: need check, that if we close not last tab with current song, we also need stop after song ended
-        if self.active_playlist >= len(self.playlists):
+        if self.playing_playlist >= len(self.playlists):
             return
-        next_pos = self.playlists[self.active_playlist].active_track + 1
-        if next_pos < self.playlists[self.active_playlist].count():
-            self.playlists[self.active_playlist].active_track = next_pos
-            url = self.playlists[self.active_playlist].tracks[next_pos].stream_url()
+        next_pos = self.playlists[self.playing_playlist].active_track + 1
+        if next_pos < self.playlists[self.playing_playlist].count():
+            self.playlists[self.playing_playlist].active_track = next_pos
+            url = self.playlists[self.playing_playlist].tracks[next_pos].stream_url()
             self._player.setMedia(QMediaContent(QUrl(url)))
             self.play()
 
     def previous(self):
         self.log.debug('previous')
-        prev_pos = self.playlists[self.active_playlist].active_track - 1
+        prev_pos = self.playlists[self.playing_playlist].active_track - 1
         if prev_pos >= 0:
-            self.playlists[self.active_playlist].active_track = prev_pos
-            url = self.playlists[self.active_playlist].tracks[prev_pos].stream_url()
+            self.playlists[self.playing_playlist].active_track = prev_pos
+            url = self.playlists[self.playing_playlist].tracks[prev_pos].stream_url()
             self._player.setMedia(QMediaContent(QUrl(url)))
             self.play()
 
@@ -128,11 +130,11 @@ class Controller:
     def change_track(self):
         self.log.debug('change_track')
         playlist_index = self.view.tabs.currentIndex()
-        self.active_playlist = playlist_index
+        self.playing_playlist = playlist_index
         position = self.view.tabs.currentWidget().currentRow()
-        self.playlists[self.active_playlist].active_track = position
+        self.playlists[self.playing_playlist].active_track = position
         self.log.debug('position: %i' % position)
-        url = self.playlists[self.active_playlist].tracks[position].stream_url()
+        url = self.playlists[self.playing_playlist].tracks[position].stream_url()
         self._player.setMedia(QMediaContent(QUrl(url)))
         if self._player.state() in [QMediaPlayer.StoppedState, QMediaPlayer.PausedState]:
             self.play()
@@ -216,7 +218,8 @@ class Controller:
     def search_similar(self):
         self.view.search_list.clear()
         position = self.view.tabs.currentWidget().currentRow()
-        track = self.playlists[self.active_playlist].tracks[position]
+        playlist_index = self.view.tabs.currentIndex()
+        track = self.playlists[playlist_index].tracks[position]
 
         related_tracks = track.search_related()
         self._searched_tracks = related_tracks
