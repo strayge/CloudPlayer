@@ -148,15 +148,19 @@ class Controller:
         selected_playlist = self.view.tabs.currentIndex()
         playlist = self.playlists[selected_playlist]
         processed_ids = []
-        counter = 0
-        self.log.debug('tracks count: %i' % len(playlist.tracks))
-        for track in playlist.tracks:
-            if track.id in processed_ids:
-                self.log.debug('track index for removing: %i' % playlist.tracks.index(track))
-                self.remove_track(track_pos=playlist.tracks.index(track))
-                counter += 1
+        position_for_removing = []
+        for index in range(len(playlist.tracks)):
+            if playlist.tracks[index].id in processed_ids:
+                position_for_removing.append(index)
             else:
-                processed_ids.append(track.id)
+                processed_ids.append(playlist.tracks[index].id)
+
+        self.log.debug('tracks count: %i' % len(playlist.tracks))
+        counter = 0
+        for index in reversed(position_for_removing):
+            self.log.debug('track index for removing: %i' % index)
+            self.remove_track(track_pos=index)
+            counter += 1
         self.log.info('Removed %i tracks.' % counter)
 
     def save_track(self, playlist_pos=None, track_pos=None):
