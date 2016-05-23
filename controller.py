@@ -68,20 +68,16 @@ class Controller:
                                            total_duration // 60 % 60, total_duration % 60))
 
     def add_track(self, track, playlist_index=None):
-        if not playlist_index:
+        if playlist_index is None:
             playlist_index = self.view.tabs.currentIndex()
         self.playlists[playlist_index].add(track)
-        self.view.tabs.currentWidget().addItem(track.title)
+        self.view.tabs.widget(playlist_index).addItem(track.title)
 
     def remove_track(self, track_pos=None):
-        if not track_pos:
+        if track_pos is None:
             track_pos = self.view.tabs.currentWidget().currentRow()
         if track_pos != -1:
             self.view.tabs.currentWidget().takeItem(track_pos)
-            self.log.debug('track_pos: %i' % track_pos)
-            self.log.debug('active_playlist: %i' % self.active_playlist)
-            self.log.debug('active_playlist_count: %i' % self.playlists[self.active_playlist].count())
-            self.log.debug('active_playlist_len: %i' % len(self.playlists[self.active_playlist].tracks))
             self.playlists[self.active_playlist].remove(track_pos)
             self.update_status()
 
@@ -164,9 +160,9 @@ class Controller:
         self.log.info('Removed %i tracks.' % counter)
 
     def save_track(self, playlist_pos=None, track_pos=None):
-        if not track_pos:
+        if track_pos is None:
             track_pos = self.view.tabs.currentWidget().currentRow()
-        if not playlist_pos:
+        if playlist_pos is None:
             playlist_pos = self.view.tabs.currentIndex()
         playlist = self.playlists[playlist_pos]
         track = playlist.tracks[track_pos]
@@ -198,6 +194,7 @@ class Controller:
         self.playlists.append(Playlist(name))
 
     def remove_playlist(self, index):
+        self.log.debug('remove playlist with index = %i' % index)
         del (self.playlists[index])
 
     def search_tracks(self):
@@ -244,20 +241,26 @@ class Controller:
         state = pickle.load(f)
         f.close()
         loaded_playlists = state['playlists']
+        self.log.debug('loaded %i playlists.' % len(loaded_playlists))
         for i in range(len(loaded_playlists) - len(self.playlists)):
             self.view.tab_add()
-        self.view.tabs.setCurrentIndex(state['current_playlist'])
+        self.playlists.clear()
         index = 0
-        del (self.playlists[0])
         for playlist in loaded_playlists:
+            self.log.debug('playlist: %s, len: %i' % (playlist.name, len(playlist.tracks)))
             self.add_playlist(playlist.name)
             for track in playlist.tracks:
                 self.add_track(track, playlist_index=index)
             index += 1
+        self.log.debug(len(self.playlists))
+        self.log.debug('curent tab: %i' % state['current_playlist'])
+        self.view.tabs.setCurrentIndex(state['current_playlist'])
+        self.log.debug('volume: %i' % state['volume'])
         self.view.volume.setValue(state['volume'])
 
     def save_current_state(self):
         state = dict()
+        self.log.debug('playlists count: %i' % len(self.playlists))
         state['playlists'] = self.playlists
         state['current_playlist'] = self.view.tabs.currentIndex()
         state['volume'] = self.view.volume.value()

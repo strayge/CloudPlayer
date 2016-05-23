@@ -45,7 +45,7 @@ class QTabWidgetWithAdd(QTabWidget):
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        logging.basicConfig(level = logging.DEBUG, format = '%(filename)-17s %(levelname)-7s %(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        logging.basicConfig(level = logging.DEBUG, format = '%(filename)-17s %(lineno)-3d %(levelname)-7s %(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         self.log = logging.getLogger()
         super(MainWindow, self).__init__()
         frame = QFrame(self)
