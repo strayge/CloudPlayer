@@ -254,12 +254,13 @@ class Controller:
             for track in playlist.tracks:
                 self.add_track(track, playlist_index=index)
             index += 1
-        # todo: add save/load volume state
+        self.view.volume.setValue(state['volume'])
 
     def save_current_state(self):
         state = dict()
         state['playlists'] = self.playlists
         state['current_playlist'] = self.view.tabs.currentIndex()
+        state['volume'] = self.view.volume.value()
         f = open('state.pickle', 'wb')
         pickle.dump(state, f)
         f.close()
