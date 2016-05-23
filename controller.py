@@ -6,7 +6,8 @@ from cloud_api import *
 
 
 class Controller:
-    def __init__(self, view):
+    def __init__(self, view, log):
+        self.log = log
         self.view = view
         self._player = QMediaPlayer()
         self._player.mediaStatusChanged.connect(self._player_status_changed)
@@ -21,7 +22,7 @@ class Controller:
         self.last_colored_item = None
 
     def _player_status_changed(self, status):
-        print('_player_status_changed', status)
+        self.log.debug('_player_status_changed: %s', str(status))
         if status in [QMediaPlayer.EndOfMedia, QMediaPlayer.InvalidMedia]:
             self.next()
 
@@ -36,19 +37,19 @@ class Controller:
                     self.view.set_title(track.title)
                 self.update_list_position(pos)
             except IndexError:
-                print('Index error in _player_status_changed')
+                self.log.error('Index error in _player_status_changed')
 
     def _player_media_changed(self, media):
-        print('_player_media_changed', media)
+        self.log.debug('_player_media_changed: %s' % str(media))
 
     def _player_current_media_changed(self, media):
-        print('_player_current_media_changed', media)
+        self.log.debug('_player_current_media_changed: %s' % str(media))
 
     def _player_state_changed(self, state):
-        print('_player_state_changed', state)
+        self.log.debug('_player_state_changed: %s' % str(state))
 
     def _player_duration_changed(self, duration):
-        print('_player_duration_changed', duration)
+        self.log.debug('_player_duration_changed: %s' % str(duration))
         self.view.track_position.setMaximum(duration)
 
     def _player_position_changed(self, pos):
@@ -77,10 +78,10 @@ class Controller:
             track_pos = self.view.tabs.currentWidget().currentRow()
         if track_pos != -1:
             self.view.tabs.currentWidget().takeItem(track_pos)
-            print('track_pos: %i' % track_pos)
-            print('active_playlist: %i' % self.active_playlist)
-            print('active_playlist_count: %i' % self.playlists[self.active_playlist].count())
-            print('active_playlist_len: %i' % len(self.playlists[self.active_playlist].tracks))
+            self.log.debug('track_pos: %i' % track_pos)
+            self.log.debug('active_playlist: %i' % self.active_playlist)
+            self.log.debug('active_playlist_count: %i' % self.playlists[self.active_playlist].count())
+            self.log.debug('active_playlist_len: %i' % len(self.playlists[self.active_playlist].tracks))
             self.playlists[self.active_playlist].remove(track_pos)
             self.update_status()
 
@@ -91,7 +92,7 @@ class Controller:
         self.update_status()
 
     def next(self):
-        print('next')
+        self.log.debug('next')
         # if we close last tab with current track, after it ended, we stop playing
         # todo: need check, that if we close not last tab with current song, we also need stop after song ended
         if self.active_playlist >= len(self.playlists):
@@ -104,7 +105,7 @@ class Controller:
             self.play()
 
     def previous(self):
-        print('previous')
+        self.log.debug('previous')
         prev_pos = self.playlists[self.active_playlist].active_track - 1
         if prev_pos >= 0:
             self.playlists[self.active_playlist].active_track = prev_pos
@@ -113,9 +114,11 @@ class Controller:
             self.play()
 
     def play(self):
+        self.log.debug('play')
         self._player.play()
 
     def pause(self):
+        self.log.debug('pause')
         self._player.pause()
 
     def update_list_position(self, position):
@@ -127,14 +130,12 @@ class Controller:
             self.last_colored_item.setBackground(QBrush(QColor('red')))
 
     def change_track(self):
-        print('change_track')
+        self.log.debug('change_track')
         playlist_index = self.view.tabs.currentIndex()
         self.active_playlist = playlist_index
-
         position = self.view.tabs.currentWidget().currentRow()
-
         self.playlists[self.active_playlist].active_track = position
-        print(position)
+        self.log.debug('position: %i' % position)
         url = self.playlists[self.active_playlist].tracks[position].stream_url()
         self._player.setMedia(QMediaContent(QUrl(url)))
         if self._player.state() in [QMediaPlayer.StoppedState, QMediaPlayer.PausedState]:
@@ -148,15 +149,15 @@ class Controller:
         playlist = self.playlists[selected_playlist]
         processed_ids = []
         counter = 0
-        print(len(playlist.tracks))
+        self.log.debug('tracks count: %i' % len(playlist.tracks))
         for track in playlist.tracks:
             if track.id in processed_ids:
-                print(playlist.tracks.index(track))
+                self.log.debug('track index for removing: %i' % playlist.tracks.index(track))
                 self.remove_track(track_pos=playlist.tracks.index(track))
                 counter += 1
             else:
                 processed_ids.append(track.id)
-        print('Removed %i tracks.' % counter)
+        self.log.info('Removed %i tracks.' % counter)
 
     def save_track(self, playlist_pos=None, track_pos=None):
         if not track_pos:
@@ -171,9 +172,9 @@ class Controller:
         selected_playlist = self.view.tabs.currentIndex()
         playlist = self.playlists[selected_playlist]
         for track_pos in range(playlist.count()):
-            print('Saving %i/%s track...' % (track_pos+1, playlist.count()))
+            self.log.info('Saving %i/%s track...' % (track_pos+1, playlist.count()))
             self.save_track(playlist_pos=selected_playlist, track_pos=track_pos)
-        print('Saving done.')
+        self.log.info('Saving done.')
 
     def load_playlist(self):
         playlist_index = self.view.tabs.currentIndex()
