@@ -195,6 +195,11 @@ def sc_search_related(track_id=-1, track=None):
         track = sc_get_track(track_id)
     return [Track(x, service='soundcloud') for x in _client.get('/tracks/%i/related' % track.id)]
 
+def _filter_filename(title):
+    invalid_chars = '\\/:*?"<>|'
+    filename = ''.join(char for char in title if char not in invalid_chars)
+    return filename.lstrip('.')
+
 def sc_save_track(track_id=-1, track=None, path=''):
     if len(path) and path[len(path)-1] != os.sep:
         path += os.sep
@@ -204,19 +209,19 @@ def sc_save_track(track_id=-1, track=None, path=''):
     url = track.stream_url()
     r = requests.get(url)
     if r.status_code == 200:
-        filename = path + track.title + '.' + track.original_format
+        filename = path + _filter_filename(track.title) + '.' + track.original_format
         if os.path.exists(filename):
             for i in range(100):
                 if i == 99:
                     return
-                filename = "%s%s (%i).%s" % (path, track.title, i+2, track.original_format)
+                filename = "%s%s (%i).%s" % (path, _filter_filename(track.title), i+2, track.original_format)
                 if not os.path.exists(filename):
                     break
         f = open(filename, 'wb')
         for data in r.iter_content():
             f.write(data)
         f.close()
-        print('Saved to "%s"' % filename)
+        print('Saved to "%s"' % filename.encode('ascii', 'replace'))
         return True
 
 def sc_load_playlist(name):
